@@ -17,7 +17,7 @@ ext_modules = [
     ]
 
 setup(
-    name='pycocotools',
+    name='ocrd-fork-pycocotools',
     description='Official APIs for the MS-COCO dataset',
     url="https://github.com/ppwwyyxx/cocoapi",
     license="FreeBSD",
