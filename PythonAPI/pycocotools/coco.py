@@ -46,9 +46,6 @@ __version__ = '2.0'
 
 import json
 import time
-import matplotlib.pyplot as plt
-from matplotlib.collections import PatchCollection
-from matplotlib.patches import Polygon
 import numpy as np
 import copy
 import itertools
@@ -61,6 +58,11 @@ if PYTHON_VERSION == 2:
     from urllib import urlretrieve
 elif PYTHON_VERSION == 3:
     from urllib.request import urlretrieve
+
+
+def _isArrayLike(obj):
+    return hasattr(obj, '__iter__') and hasattr(obj, '__len__')
+
 
 class COCO:
     def __init__(self, annotation_file=None):
@@ -76,7 +78,8 @@ class COCO:
         if not annotation_file == None:
             print('loading annotations into memory...')
             tic = time.time()
-            dataset = json.load(open(annotation_file, 'r'))
+            with open(annotation_file, 'r') as f:
+                dataset = json.load(f)
             assert type(dataset)==dict, 'annotation file format {} not supported'.format(type(dataset))
             print('Done (t={:0.2f}s)'.format(time.time()- tic))
             self.dataset = dataset
@@ -130,8 +133,8 @@ class COCO:
                iscrowd (boolean)       : get anns for given crowd label (False or True)
         :return: ids (int array)       : integer array of ann ids
         """
-        imgIds = imgIds if type(imgIds) == list else [imgIds]
-        catIds = catIds if type(catIds) == list else [catIds]
+        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
+        catIds = catIds if _isArrayLike(catIds) else [catIds]
 
         if len(imgIds) == len(catIds) == len(areaRng) == 0:
             anns = self.dataset['annotations']
@@ -157,9 +160,9 @@ class COCO:
         :param catIds (int array)  : get cats for given cat ids
         :return: ids (int array)   : integer array of cat ids
         """
-        catNms = catNms if type(catNms) == list else [catNms]
-        supNms = supNms if type(supNms) == list else [supNms]
-        catIds = catIds if type(catIds) == list else [catIds]
+        catNms = catNms if _isArrayLike(catNms) else [catNms]
+        supNms = supNms if _isArrayLike(supNms) else [supNms]
+        catIds = catIds if _isArrayLike(catIds) else [catIds]
 
         if len(catNms) == len(supNms) == len(catIds) == 0:
             cats = self.dataset['categories']
@@ -178,8 +181,8 @@ class COCO:
         :param catIds (int array) : get imgs with all given cats
         :return: ids (int array)  : integer array of img ids
         '''
-        imgIds = imgIds if type(imgIds) == list else [imgIds]
-        catIds = catIds if type(catIds) == list else [catIds]
+        imgIds = imgIds if _isArrayLike(imgIds) else [imgIds]
+        catIds = catIds if _isArrayLike(catIds) else [catIds]
 
         if len(imgIds) == len(catIds) == 0:
             ids = self.imgs.keys()
@@ -198,7 +201,7 @@ class COCO:
         :param ids (int array)       : integer ids specifying anns
         :return: anns (object array) : loaded ann objects
         """
-        if type(ids) == list:
+        if _isArrayLike(ids):
             return [self.anns[id] for id in ids]
         elif type(ids) == int:
             return [self.anns[ids]]
@@ -209,7 +212,7 @@ class COCO:
         :param ids (int array)       : integer ids specifying cats
         :return: cats (object array) : loaded cat objects
         """
-        if type(ids) == list:
+        if _isArrayLike(ids):
             return [self.cats[id] for id in ids]
         elif type(ids) == int:
             return [self.cats[ids]]
@@ -220,12 +223,12 @@ class COCO:
         :param ids (int array)       : integer ids specifying img
         :return: imgs (object array) : loaded img objects
         """
-        if type(ids) == list:
+        if _isArrayLike(ids):
             return [self.imgs[id] for id in ids]
         elif type(ids) == int:
             return [self.imgs[ids]]
 
-    def showAnns(self, anns):
+    def showAnns(self, anns, draw_bbox=False):
         """
         Display the specified annotations.
         :param anns (array of object): annotations to display
@@ -240,6 +243,10 @@ class COCO:
         else:
             raise Exception('datasetType not supported')
         if datasetType == 'instances':
+            import matplotlib.pyplot as plt
+            from matplotlib.collections import PatchCollection
+            from matplotlib.patches import Polygon
+
             ax = plt.gca()
             ax.set_autoscale_on(False)
             polygons = []
@@ -281,6 +288,14 @@ class COCO:
                             plt.plot(x[sk],y[sk], linewidth=3, color=c)
                     plt.plot(x[v>0], y[v>0],'o',markersize=8, markerfacecolor=c, markeredgecolor='k',markeredgewidth=2)
                     plt.plot(x[v>1], y[v>1],'o',markersize=8, markerfacecolor=c, markeredgecolor=c, markeredgewidth=2)
+
+                if draw_bbox:
+                    [bbox_x, bbox_y, bbox_w, bbox_h] = ann['bbox']
+                    poly = [[bbox_x, bbox_y], [bbox_x, bbox_y+bbox_h], [bbox_x+bbox_w, bbox_y+bbox_h], [bbox_x+bbox_w, bbox_y]]
+                    np_poly = np.array(poly).reshape((4,2))
+                    polygons.append(Polygon(np_poly))
+                    color.append(c)
+
             p = PatchCollection(polygons, facecolor=color, linewidths=0, alpha=0.4)
             ax.add_collection(p)
             p = PatchCollection(polygons, facecolor='none', edgecolors=color, linewidths=2)
@@ -300,13 +315,9 @@ class COCO:
 
         print('Loading and preparing results...')
         tic = time.time()
-        # Check result type in a way compatible with Python 2 and 3.
-        try:
-            is_string =  isinstance(resFile, basestring)  # Python 2
-        except NameError:
-            is_string = isinstance(resFile, str)  # Python 3
-        if is_string:
-            anns = json.load(open(resFile))
+        if type(resFile) == str or (PYTHON_VERSION == 2 and type(resFile) == unicode):
+            with open(resFile) as f:
+                anns = json.load(f)
         elif type(resFile) == np.ndarray:
             anns = self.loadNumpyAnnotations(resFile)
         else:
