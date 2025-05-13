@@ -3,7 +3,7 @@
 
 This is a fork of the original [cocoapi](https://github.com/cocodataset/cocoapi), with bug fixes and packaging improvements.
 
-This is also the source of the pypi package `pycocotools`, available for download at [pypi](https://pypi.org/project/pycocotools/).
+This is also the source of the pypi package `ocrd-fork-pycocotools`, available for download at [pypi](https://pypi.org/project/ocrd-fork-pycocotools/).
 
 Changes in this fork include:
 * Add CircleCI tests
@@ -14,6 +14,7 @@ Changes in this fork include:
 * Fix a small bug in rleToBbox
 * Fix a segfault in RLE decoding
 * Fix deprecated usage of other libraries
+* [Allow setting `maxDets` freely](https://github.com/ppwwyyxx/cocoapi/pull/7)
 
 For compatibility, we will not make any API changes or non-bug behavior changes to the existing APIs of the official cocoapi.
 
